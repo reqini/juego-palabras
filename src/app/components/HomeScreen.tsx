@@ -2,11 +2,12 @@ import '../../styles/components.css'
 
 interface HomeScreenProps {
   onPlay: () => void
+  onMultiplayer: () => void
   onLeaderboard: () => void
   onConfig: () => void
 }
 
-export function HomeScreen({ onPlay, onLeaderboard, onConfig }: HomeScreenProps) {
+export function HomeScreen({ onPlay, onMultiplayer, onLeaderboard, onConfig }: HomeScreenProps) {
   return (
     <div className="home-screen">
       <div className="header">
@@ -17,6 +18,9 @@ export function HomeScreen({ onPlay, onLeaderboard, onConfig }: HomeScreenProps)
       <div className="buttons">
         <button onClick={onPlay} className="btn btn-lg btn-primary">
           ▶️ Jugar
+        </button>
+        <button onClick={onMultiplayer} className="btn btn-lg btn-primary">
+          👥 Multiplayer
         </button>
         <button onClick={onLeaderboard} className="btn btn-lg btn-secondary">
           🏆 Tabla de Posiciones

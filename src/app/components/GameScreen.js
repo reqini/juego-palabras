@@ -4,8 +4,9 @@ import { formatTime, playSound, triggerVibration, triggerFlash } from '../../lib
 import { useSettings } from '../SettingsContext';
 import { useDeviceTiltControls } from '../../hooks/useDeviceTiltControls';
 import { getRandomWord, WORD_CATEGORIES } from '../../data/words';
+import { updatePlayerStats, getOrCreatePlayerId } from '../../lib/roomManager';
 import '../../styles/components.css';
-export function GameScreen({ onGameEnd }) {
+export function GameScreen({ onGameEnd, roomCode }) {
     const { settings } = useSettings();
     const [timeLeft, setTimeLeft] = useState(settings.duration);
     const [preCountdown, setPreCountdown] = useState(3);
@@ -16,6 +17,7 @@ export function GameScreen({ onGameEnd }) {
     const [usedWords, setUsedWords] = useState(new Set());
     const [gameStarted, setGameStarted] = useState(false);
     const [sensorStatus, setSensorStatus] = useState('Iniciando...');
+    const [isMultiplayer] = useState(!!roomCode);
     const handleCorrect = () => {
         if (!gameStarted)
             return;
@@ -105,6 +107,11 @@ export function GameScreen({ onGameEnd }) {
             setTimeLeft(prev => {
                 if (prev <= 1) {
                     clearInterval(gameInterval);
+                    // Save multiplayer stats if in room
+                    if (isMultiplayer && roomCode) {
+                        const playerId = getOrCreatePlayerId();
+                        updatePlayerStats(roomCode, playerId, correctAnswers.length, skippedAnswers.length, score);
+                    }
                     onGameEnd({
                         correctAnswers,
                         skippedAnswers,
@@ -116,7 +123,7 @@ export function GameScreen({ onGameEnd }) {
             });
         }, 1000);
         return () => clearInterval(gameInterval);
-    }, [gameStarted, correctAnswers, skippedAnswers, score, onGameEnd]);
+    }, [gameStarted, correctAnswers, skippedAnswers, score, onGameEnd, isMultiplayer, roomCode]);
     if (!gameStarted) {
         return (_jsxs("div", { className: "pre-game-screen", children: [_jsx("h1", { children: "\u00A1Listo?" }), _jsx("div", { className: "countdown-display", children: preCountdown > 0 ? preCountdown : '¡YA!' }), _jsxs("p", { className: "sensor-status-text", children: [sensorStatus === 'Sensores OK' ? '✓' : '⚠️', " ", sensorStatus] }), !tiltState.sensorAvailable && (_jsx("p", { className: "fallback-info", children: "Usa los botones para jugar" }))] }));
     }

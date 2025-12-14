@@ -4,10 +4,11 @@ import { GameScreen } from './components/GameScreen'
 import { LeaderboardScreen } from './components/LeaderboardScreen'
 import { ConfigScreen } from './components/ConfigScreen'
 import { EndGameScreen } from './components/EndGameScreen'
+import { MultiplayerSetupScreen } from './components/MultiplayerSetupScreen'
 import { SettingsProvider, useSettings } from './SettingsContext'
 import '../styles/app.css'
 
-type Screen = 'home' | 'game' | 'leaderboard' | 'config' | 'endgame'
+type Screen = 'home' | 'game' | 'leaderboard' | 'config' | 'endgame' | 'multiplayer'
 
 interface GameStats {
   correctAnswers: string[]
@@ -19,6 +20,7 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('home')
   const [gameStats, setGameStats] = useState<GameStats | null>(null)
   const [isLandscape, setIsLandscape] = useState(window.innerWidth > window.innerHeight)
+  const [multiplayerRoomCode, setMultiplayerRoomCode] = useState<string | undefined>(undefined)
   const { settings } = useSettings()
 
   useEffect(() => {
@@ -41,6 +43,11 @@ function AppContent() {
     setCurrentScreen('endgame')
   }
 
+  const handleMultiplayerStart = (_mode: 'single' | 'multiplayer', roomCode?: string) => {
+    setMultiplayerRoomCode(roomCode)
+    setCurrentScreen('game')
+  }
+
   return (
     <div className={`app ${isLandscape ? 'landscape' : 'portrait'}`}>
       {!isLandscape && (
@@ -54,13 +61,21 @@ function AppContent() {
       {currentScreen === 'home' && (
         <HomeScreen
           onPlay={() => setCurrentScreen('game')}
+          onMultiplayer={() => setCurrentScreen('multiplayer')}
           onLeaderboard={() => setCurrentScreen('leaderboard')}
           onConfig={() => setCurrentScreen('config')}
         />
       )}
 
+      {currentScreen === 'multiplayer' && (
+        <MultiplayerSetupScreen
+          onGameStart={handleMultiplayerStart}
+          onBack={() => setCurrentScreen('home')}
+        />
+      )}
+
       {currentScreen === 'game' && (
-        <GameScreen onGameEnd={handleGameEnd} />
+        <GameScreen onGameEnd={handleGameEnd} roomCode={multiplayerRoomCode} />
       )}
 
       {currentScreen === 'leaderboard' && (
