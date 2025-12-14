@@ -1,0 +1,201 @@
+import { useState, useEffect } from 'react'
+import { formatTime, playSound, triggerVibration, triggerFlash } from '../../lib/utils'
+import { useSettings } from '../SettingsContext'
+import { useDeviceTiltControls } from '../../hooks/useDeviceTiltControls'
+import { getRandomWord, WORD_CATEGORIES } from '../../data/words'
+import '../../styles/components.css'
+
+interface GameScreenProps {
+  onGameEnd: (stats: { correctAnswers: string[]; skippedAnswers: string[]; score: number }) => void
+}
+
+export function GameScreen({ onGameEnd }: GameScreenProps) {
+  const { settings } = useSettings()
+  const [timeLeft, setTimeLeft] = useState(settings.duration)
+  const [preCountdown, setPreCountdown] = useState(3)
+  const [currentWord, setCurrentWord] = useState('')
+  const [score, setScore] = useState(0)
+  const [correctAnswers, setCorrectAnswers] = useState<string[]>([])
+  const [skippedAnswers, setSkippedAnswers] = useState<string[]>([])
+  const [usedWords, setUsedWords] = useState<Set<string>>(new Set())
+  const [gameStarted, setGameStarted] = useState(false)
+  const [sensorStatus, setSensorStatus] = useState('Iniciando...')
+
+  const handleCorrect = () => {
+    if (!gameStarted) return
+
+    setCorrectAnswers(prev => [...prev, currentWord])
+    setScore(prev => prev + 1)
+
+    if (settings.soundEnabled) playSound('correct')
+    if (settings.vibrationEnabled) triggerVibration('correct')
+    triggerFlash('correct')
+
+    nextWord()
+  }
+
+  const handleSkip = () => {
+    if (!gameStarted) return
+
+    setSkippedAnswers(prev => [...prev, currentWord])
+
+    if (settings.soundEnabled) playSound('skip')
+    if (settings.vibrationEnabled) triggerVibration('skip')
+    triggerFlash('skip')
+
+    nextWord()
+  }
+
+  const { tiltState, calibrate, requestPermissionAndStart } = useDeviceTiltControls(
+    handleSkip,
+    handleCorrect,
+    settings.tiltCalibration,
+    settings.tiltThreshold
+  )
+
+  const nextWord = () => {
+    const categoriesToUse = settings.mixCategories
+      ? Object.keys(WORD_CATEGORIES)
+      : [settings.category]
+
+    let word = ''
+    let category = categoriesToUse[Math.floor(Math.random() * categoriesToUse.length)]
+
+    for (let attempts = 0; attempts < 10; attempts++) {
+      const candidate = getRandomWord(category as keyof typeof WORD_CATEGORIES, usedWords)
+      if (!usedWords.has(candidate)) {
+        word = candidate
+        break
+      }
+      category = categoriesToUse[Math.floor(Math.random() * categoriesToUse.length)]
+    }
+
+    if (word) {
+      setUsedWords(prev => new Set([...prev, word]))
+      setCurrentWord(word)
+    }
+  }
+
+  // Startup sequence
+  useEffect(() => {
+    const startup = async () => {
+      setSensorStatus('Solicitando permiso de sensores...')
+      await requestPermissionAndStart()
+
+      if (tiltState.sensorAvailable) {
+        setSensorStatus('Calibrando...')
+        calibrate()
+        setSensorStatus('Sensores OK')
+      } else {
+        setSensorStatus('Usando botones (sensores no disponibles)')
+      }
+    }
+
+    startup()
+  }, [])
+
+  // Pre-game countdown (3..2..1) separate from game timer
+  useEffect(() => {
+    if (gameStarted) return
+
+    setPreCountdown(3)
+    const countdownInterval = setInterval(() => {
+      setPreCountdown(prev => {
+        if (prev === 1) {
+          clearInterval(countdownInterval)
+          // initialize first word and start game timer
+          nextWord()
+          setTimeLeft(settings.duration)
+          setGameStarted(true)
+          return 0
+        }
+        if (settings.soundEnabled) playSound('tick')
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(countdownInterval)
+  }, [gameStarted, settings])
+
+  // Game timer
+  useEffect(() => {
+    if (!gameStarted) return
+
+    const gameInterval = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(gameInterval)
+          onGameEnd({
+            correctAnswers,
+            skippedAnswers,
+            score
+          })
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(gameInterval)
+  }, [gameStarted, correctAnswers, skippedAnswers, score, onGameEnd])
+
+  if (!gameStarted) {
+    return (
+      <div className="pre-game-screen">
+        <h1>¡Listo?</h1>
+        <div className="countdown-display">{preCountdown > 0 ? preCountdown : '¡YA!'}</div>
+        <p className="sensor-status-text">
+          {sensorStatus === 'Sensores OK' ? '✓' : '⚠️'} {sensorStatus}
+        </p>
+        {!tiltState.sensorAvailable && (
+          <p className="fallback-info">Usa los botones para jugar</p>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="game-screen">
+      <div className="game-header">
+        <div className="timer">{formatTime(timeLeft)}</div>
+        <div className="score">Puntos: {score}</div>
+      </div>
+
+      <div className="game-center">
+        <div className="word-display">{currentWord.toUpperCase()}</div>
+      </div>
+
+      <div className="game-footer">
+        <div className="tilt-indicator">
+          <div className="tilt-label">Inclinación Beta: {Math.round(tiltState.beta)}°</div>
+          <div className="tilt-bar">
+            <div
+              className="tilt-needle"
+              style={{
+                left: `${Math.max(0, Math.min(100, 50 + (tiltState.beta / 180) * 50))}%`
+              }}
+            />
+          </div>
+        </div>
+
+        {!tiltState.sensorAvailable && (
+          <div className="button-controls">
+            <button onClick={handleSkip} className="btn btn-skip">
+              ⬆️ SKIP
+            </button>
+            <button onClick={handleCorrect} className="btn btn-correct">
+              ⬇️ CORRECTA
+            </button>
+          </div>
+        )}
+
+        <div className="stats">
+          <div>✓ {correctAnswers.length}</div>
+          <div>⊘ {skippedAnswers.length}</div>
+        </div>
+      </div>
+
+      <div id="flash-overlay" className="flash-overlay" />
+    </div>
+  )
+}
