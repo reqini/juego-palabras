@@ -333,25 +333,25 @@
 }
 
 .btn-skip {
-  background: linear-gradient(135deg, #34C759 0%, #2fa744 100%);
+  background: linear-gradient(135deg, #FF9500 0%, #e68700 100%);
   color: white;
 }
 
 .btn-skip:active {
   transform: scale(0.95);
-  box-shadow: 0 2px 6px rgba(52, 199, 89, 0.4);
-  background: linear-gradient(135deg, #2fa744 0%, #26933f 100%);
+  box-shadow: 0 2px 6px rgba(255, 149, 0, 0.4);
+  background: linear-gradient(135deg, #e68700 0%, #cc7700 100%);
 }
 
 .btn-correct {
-  background: linear-gradient(135deg, #FF3B30 0%, #e63528 100%);
+  background: linear-gradient(135deg, #34C759 0%, #2fa744 100%);
   color: white;
 }
 
 .btn-correct:active {
   transform: scale(0.95);
-  box-shadow: 0 2px 6px rgba(255, 59, 48, 0.4);
-  background: linear-gradient(135deg, #e63528 0%, #cc2e24 100%);
+  box-shadow: 0 2px 6px rgba(52, 199, 89, 0.4);
+  background: linear-gradient(135deg, #2fa744 0%, #26933f 100%);
 }
 
 .stats {

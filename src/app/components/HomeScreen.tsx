@@ -11,9 +11,10 @@ interface HomeScreenProps {
   onMultiplayer: () => void
   onLeaderboard: () => void
   onConfig: () => void
+  onPlayers: () => void
 }
 
-export function HomeScreen({ onPlay, onMultiplayer, onLeaderboard, onConfig }: HomeScreenProps) {
+export function HomeScreen({ onPlay, onMultiplayer, onLeaderboard, onConfig, onPlayers }: HomeScreenProps) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showInstallButton, setShowInstallButton] = useState(false)
 
@@ -54,6 +55,9 @@ export function HomeScreen({ onPlay, onMultiplayer, onLeaderboard, onConfig }: H
         </button>
         <button onClick={onMultiplayer} className="btn btn-lg btn-primary">
           👥 Multiplayer
+        </button>
+        <button onClick={onPlayers} className="btn btn-lg btn-secondary">
+          👤 Mis Jugadores
         </button>
         {showInstallButton && (
           <button onClick={handleInstall} className="btn btn-lg btn-secondary">

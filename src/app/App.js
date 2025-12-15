@@ -6,7 +6,9 @@ import { LeaderboardScreen } from './components/LeaderboardScreen';
 import { ConfigScreen } from './components/ConfigScreen';
 import { EndGameScreen } from './components/EndGameScreen';
 import { MultiplayerSetupScreen } from './components/MultiplayerSetupScreen';
+import { PlayersManagerScreen } from './components/PlayersManagerScreen';
 import { SettingsProvider, useSettings } from './SettingsContext';
+import { PlayersProvider } from './PlayersContext';
 import '../styles/app.css';
 function AppContent() {
     const [currentScreen, setCurrentScreen] = useState('home');
@@ -34,8 +36,8 @@ function AppContent() {
         setMultiplayerRoomCode(roomCode);
         setCurrentScreen('game');
     };
-    return (_jsxs("div", { className: `app ${isLandscape ? 'landscape' : 'portrait'}`, children: [!isLandscape && (_jsx("div", { className: "rotation-overlay", children: _jsx("div", { className: "rotation-message", children: "\uD83D\uDCF1 Rot\u00E1 el celular a horizontal" }) })), currentScreen === 'home' && (_jsx(HomeScreen, { onPlay: () => setCurrentScreen('game'), onMultiplayer: () => setCurrentScreen('multiplayer'), onLeaderboard: () => setCurrentScreen('leaderboard'), onConfig: () => setCurrentScreen('config') })), currentScreen === 'multiplayer' && (_jsx(MultiplayerSetupScreen, { onGameStart: handleMultiplayerStart, onBack: () => setCurrentScreen('home') })), currentScreen === 'game' && (_jsx(GameScreen, { onGameEnd: handleGameEnd, roomCode: multiplayerRoomCode })), currentScreen === 'leaderboard' && (_jsx(LeaderboardScreen, { onBack: () => setCurrentScreen('home') })), currentScreen === 'config' && (_jsx(ConfigScreen, { onBack: () => setCurrentScreen('home') })), currentScreen === 'endgame' && gameStats && (_jsx(EndGameScreen, { stats: gameStats, duration: settings.duration, onComplete: () => setCurrentScreen('home') }))] }));
+    return (_jsxs("div", { className: `app ${isLandscape ? 'landscape' : 'portrait'}`, children: [!isLandscape && (_jsx("div", { className: "rotation-overlay", children: _jsx("div", { className: "rotation-message", children: "\uD83D\uDCF1 Rot\u00E1 el celular a horizontal" }) })), currentScreen === 'home' && (_jsx(HomeScreen, { onPlay: () => setCurrentScreen('game'), onMultiplayer: () => setCurrentScreen('multiplayer'), onLeaderboard: () => setCurrentScreen('leaderboard'), onConfig: () => setCurrentScreen('config'), onPlayers: () => setCurrentScreen('players') })), currentScreen === 'players' && (_jsx(PlayersManagerScreen, { onClose: () => setCurrentScreen('home'), onPlayerSelected: () => setCurrentScreen('home') })), currentScreen === 'multiplayer' && (_jsx(MultiplayerSetupScreen, { onGameStart: handleMultiplayerStart, onBack: () => setCurrentScreen('home') })), currentScreen === 'game' && (_jsx(GameScreen, { onGameEnd: handleGameEnd, roomCode: multiplayerRoomCode })), currentScreen === 'leaderboard' && (_jsx(LeaderboardScreen, { onBack: () => setCurrentScreen('home') })), currentScreen === 'config' && (_jsx(ConfigScreen, { onBack: () => setCurrentScreen('home') })), currentScreen === 'endgame' && gameStats && (_jsx(EndGameScreen, { stats: gameStats, duration: settings.duration, onComplete: () => setCurrentScreen('home') }))] }));
 }
 export function App() {
-    return (_jsx(SettingsProvider, { children: _jsx(AppContent, {}) }));
+    return (_jsx(SettingsProvider, { children: _jsx(PlayersProvider, { children: _jsx(AppContent, {}) }) }));
 }

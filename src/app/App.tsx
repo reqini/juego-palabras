@@ -5,10 +5,12 @@ import { LeaderboardScreen } from './components/LeaderboardScreen'
 import { ConfigScreen } from './components/ConfigScreen'
 import { EndGameScreen } from './components/EndGameScreen'
 import { MultiplayerSetupScreen } from './components/MultiplayerSetupScreen'
+import { PlayersManagerScreen } from './components/PlayersManagerScreen'
 import { SettingsProvider, useSettings } from './SettingsContext'
+import { PlayersProvider } from './PlayersContext'
 import '../styles/app.css'
 
-type Screen = 'home' | 'game' | 'leaderboard' | 'config' | 'endgame' | 'multiplayer'
+type Screen = 'home' | 'game' | 'leaderboard' | 'config' | 'endgame' | 'multiplayer' | 'players'
 
 interface GameStats {
   correctAnswers: string[]
@@ -64,6 +66,14 @@ function AppContent() {
           onMultiplayer={() => setCurrentScreen('multiplayer')}
           onLeaderboard={() => setCurrentScreen('leaderboard')}
           onConfig={() => setCurrentScreen('config')}
+          onPlayers={() => setCurrentScreen('players')}
+        />
+      )}
+
+      {currentScreen === 'players' && (
+        <PlayersManagerScreen
+          onClose={() => setCurrentScreen('home')}
+          onPlayerSelected={() => setCurrentScreen('home')}
         />
       )}
 
@@ -100,7 +110,9 @@ function AppContent() {
 export function App() {
   return (
     <SettingsProvider>
-      <AppContent />
+      <PlayersProvider>
+        <AppContent />
+      </PlayersProvider>
     </SettingsProvider>
   )
 }
