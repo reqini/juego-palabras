@@ -74,23 +74,37 @@ export function useDeviceTiltControls(onTiltUp, onTiltDown, calibration, thresho
         }
     }, [onTiltUp, onTiltDown, threshold]);
     const requestPermissionAndStart = useCallback(async () => {
+        console.log('[TILT] Iniciando detección de sensores...');
+        console.log('[TILT] DeviceOrientationEvent disponible:', typeof DeviceOrientationEvent !== 'undefined');
+        // Check if running on mobile (not desktop)
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        console.log('[TILT] ¿Es mobile?', isMobile);
         // iOS 13+ requires explicit permission for motion events
         if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            console.log('[TILT] Detectado iOS con requestPermission');
             try {
                 const permission = await DeviceOrientationEvent.requestPermission();
+                console.log('[TILT] Permiso de iOS:', permission);
                 if (permission === 'granted') {
-                    window.addEventListener('deviceorientation', handleDeviceOrientation);
+                    window.addEventListener('deviceorientation', handleDeviceOrientation, true);
                     setTiltState(prev => ({ ...prev, sensorAvailable: true }));
+                    console.log('[TILT] ✓ Sensores activados (iOS)');
+                }
+                else {
+                    console.warn('[TILT] ✗ Permiso denegado por usuario');
                 }
             }
             catch (err) {
-                console.error('Permission denied for device orientation', err);
+                console.error('[TILT] Error al solicitar permiso:', err);
             }
         }
         else {
             // Android and non-Apple browsers
-            window.addEventListener('deviceorientation', handleDeviceOrientation);
-            setTiltState(prev => ({ ...prev, sensorAvailable: true }));
+            console.log('[TILT] Detectado Android/WebView - registrando listener sin permiso');
+            window.addEventListener('deviceorientation', handleDeviceOrientation, true);
+            // Don't immediately set sensorAvailable for Android - wait for first event
+            // This prevents false negatives when the device hasn't moved yet
+            console.log('[TILT] Esperando primer evento de deviceorientation...');
         }
     }, [handleDeviceOrientation]);
     const calibrate = useCallback((currentState) => {

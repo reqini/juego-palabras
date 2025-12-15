@@ -110,21 +110,31 @@ export function GameScreen({ onGameEnd, roomCode }: GameScreenProps) {
 
   // Startup sequence
   useEffect(() => {
+    let timeoutId: number
+    
     const startup = async () => {
       setSensorStatus('Solicitando permiso de sensores...')
       await requestPermissionAndStart()
 
-      if (tiltState.sensorAvailable) {
-        setSensorStatus('Calibrando...')
-        calibrate()
-        setSensorStatus('Sensores OK')
-      } else {
-        setSensorStatus('Usando botones (sensores no disponibles)')
-      }
+      // Wait a bit for sensors to be detected
+      timeoutId = window.setTimeout(() => {
+        if (tiltState.sensorAvailable) {
+          setSensorStatus('Calibrando...')
+          calibrate()
+          setSensorStatus('✓ Sensores OK - Inclina el dispositivo')
+        } else {
+          console.warn('[GameScreen] Sensores no detectados, usando botones')
+          setSensorStatus('⚠️ Usando botones (sensores no disponibles)')
+        }
+      }, 500)
     }
 
     startup()
-  }, [])
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [requestPermissionAndStart, calibrate, tiltState.sensorAvailable])
 
   // Pre-game countdown (3..2..1) separate from game timer
   useEffect(() => {
@@ -179,15 +189,21 @@ export function GameScreen({ onGameEnd, roomCode }: GameScreenProps) {
   }, [gameStarted, correctAnswers, skippedAnswers, score, onGameEnd, isMultiplayer, roomCode])
 
   if (!gameStarted) {
+    const isSensorOK = tiltState.sensorAvailable && sensorStatus.includes('OK')
+    const isError = sensorStatus.includes('Usando botones')
+    
     return (
       <div className="pre-game-screen">
         <h1>¡Listo?</h1>
         <div className="countdown-display">{preCountdown > 0 ? preCountdown : '¡YA!'}</div>
-        <p className="sensor-status-text">
-          {sensorStatus === 'Sensores OK' ? '✓' : '⚠️'} {sensorStatus}
+        <p className={`sensor-status-text ${isError ? 'warning' : ''}`}>
+          {isSensorOK ? '✓' : isError ? '⚠️' : '⏳'} {sensorStatus}
         </p>
         {!tiltState.sensorAvailable && (
-          <p className="fallback-info">Usa los botones para jugar</p>
+          <p className="fallback-info">📱 Usa los botones para jugar</p>
+        )}
+        {tiltState.sensorAvailable && (
+          <p className="fallback-info">🎮 Inclina el dispositivo para controlar</p>
         )}
       </div>
     )

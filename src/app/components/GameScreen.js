@@ -90,20 +90,29 @@ export function GameScreen({ onGameEnd, roomCode }) {
     }, []);
     // Startup sequence
     useEffect(() => {
+        let timeoutId;
         const startup = async () => {
             setSensorStatus('Solicitando permiso de sensores...');
             await requestPermissionAndStart();
-            if (tiltState.sensorAvailable) {
-                setSensorStatus('Calibrando...');
-                calibrate();
-                setSensorStatus('Sensores OK');
-            }
-            else {
-                setSensorStatus('Usando botones (sensores no disponibles)');
-            }
+            // Wait a bit for sensors to be detected
+            timeoutId = window.setTimeout(() => {
+                if (tiltState.sensorAvailable) {
+                    setSensorStatus('Calibrando...');
+                    calibrate();
+                    setSensorStatus('✓ Sensores OK - Inclina el dispositivo');
+                }
+                else {
+                    console.warn('[GameScreen] Sensores no detectados, usando botones');
+                    setSensorStatus('⚠️ Usando botones (sensores no disponibles)');
+                }
+            }, 500);
         };
         startup();
-    }, []);
+        return () => {
+            if (timeoutId)
+                clearTimeout(timeoutId);
+        };
+    }, [requestPermissionAndStart, calibrate, tiltState.sensorAvailable]);
     // Pre-game countdown (3..2..1) separate from game timer
     useEffect(() => {
         if (gameStarted)
@@ -152,7 +161,9 @@ export function GameScreen({ onGameEnd, roomCode }) {
         return () => clearInterval(gameInterval);
     }, [gameStarted, correctAnswers, skippedAnswers, score, onGameEnd, isMultiplayer, roomCode]);
     if (!gameStarted) {
-        return (_jsxs("div", { className: "pre-game-screen", children: [_jsx("h1", { children: "\u00A1Listo?" }), _jsx("div", { className: "countdown-display", children: preCountdown > 0 ? preCountdown : '¡YA!' }), _jsxs("p", { className: "sensor-status-text", children: [sensorStatus === 'Sensores OK' ? '✓' : '⚠️', " ", sensorStatus] }), !tiltState.sensorAvailable && (_jsx("p", { className: "fallback-info", children: "Usa los botones para jugar" }))] }));
+        const isSensorOK = tiltState.sensorAvailable && sensorStatus.includes('OK');
+        const isError = sensorStatus.includes('Usando botones');
+        return (_jsxs("div", { className: "pre-game-screen", children: [_jsx("h1", { children: "\u00A1Listo?" }), _jsx("div", { className: "countdown-display", children: preCountdown > 0 ? preCountdown : '¡YA!' }), _jsxs("p", { className: `sensor-status-text ${isError ? 'warning' : ''}`, children: [isSensorOK ? '✓' : isError ? '⚠️' : '⏳', " ", sensorStatus] }), !tiltState.sensorAvailable && (_jsx("p", { className: "fallback-info", children: "\uD83D\uDCF1 Usa los botones para jugar" })), tiltState.sensorAvailable && (_jsx("p", { className: "fallback-info", children: "\uD83C\uDFAE Inclina el dispositivo para controlar" }))] }));
     }
     return (_jsxs("div", { className: "game-screen", children: [_jsxs("div", { className: "game-header", children: [_jsx("div", { className: "timer", children: formatTime(timeLeft) }), _jsxs("div", { className: "score", children: ["Puntos: ", score] })] }), _jsx("div", { className: "game-center", children: _jsx("div", { className: "word-display", children: currentWord.toUpperCase() }) }), _jsxs("div", { className: "game-footer", children: [tiltState.sensorAvailable && (_jsxs("div", { className: "tilt-indicator", children: [_jsxs("div", { className: "tilt-zones", children: [_jsx("div", { className: "zone-label", children: "\u2B06\uFE0F SKIP" }), _jsxs("div", { className: "tilt-bar-advanced", children: [_jsx("div", { className: "neutral-zone" }), _jsx("div", { className: `tilt-needle advanced ${tiltState.beta < -20 ? 'active-up' : tiltState.beta > 20 ? 'active-down' : ''}`, style: {
                                                     transform: `translateX(${Math.max(-100, Math.min(100, tiltState.beta))}px)`,
