@@ -63,7 +63,7 @@ export function useDeviceTiltControls(
     const tiltAmount = betaDelta
 
     const now = Date.now()
-    const minInterval = 900 // 900ms cooldown
+    const minInterval = 600 // Reduced from 900ms for faster response
 
     // Forward tilt (arriba/up) = negative beta delta
     if (tiltAmount < -threshold) {
@@ -73,7 +73,7 @@ export function useDeviceTiltControls(
 
         throttleRef.current = setTimeout(() => {
           throttleRef.current = null
-        }, 300)
+        }, 200)
       }
     }
     // Backward tilt (abajo/down) = positive beta delta
@@ -84,7 +84,7 @@ export function useDeviceTiltControls(
 
         throttleRef.current = setTimeout(() => {
           throttleRef.current = null
-        }, 300)
+        }, 200)
       }
     }
   }, [onTiltUp, onTiltDown, threshold])

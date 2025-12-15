@@ -79,6 +79,35 @@ export function GameScreen({ onGameEnd, roomCode }: GameScreenProps) {
     }
   }
 
+  // Force landscape orientation
+  useEffect(() => {
+    const forceHorizontal = async () => {
+      try {
+        const screenOrientation = screen.orientation as any
+        if (screenOrientation && screenOrientation.lock) {
+          // Try to lock to landscape
+          await screenOrientation.lock('landscape-primary').catch(() => {
+            // Fallback: try just landscape
+            screenOrientation.lock('landscape')
+          })
+        }
+      } catch (error) {
+        // Orientation lock not supported or failed
+        console.warn('Cannot lock screen orientation:', error)
+      }
+    }
+
+    forceHorizontal()
+
+    return () => {
+      // Unlock orientation when leaving game
+      const screenOrientation = screen.orientation as any
+      if (screenOrientation && screenOrientation.unlock) {
+        screenOrientation.unlock()
+      }
+    }
+  }, [])
+
   // Startup sequence
   useEffect(() => {
     const startup = async () => {

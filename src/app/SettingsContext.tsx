@@ -13,7 +13,7 @@ export interface GameSettings {
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  duration: 60,
+  duration: 15,
   category: 'general',
   tiltThreshold: 25,
   soundEnabled: true,

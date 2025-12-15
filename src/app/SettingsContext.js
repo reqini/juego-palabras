@@ -2,7 +2,7 @@ import { jsx as _jsx } from "react/jsx-runtime";
 import { createContext, useContext, useCallback } from 'react';
 import { usePersistentState } from '../hooks/usePersistentState';
 export const DEFAULT_SETTINGS = {
-    duration: 60,
+    duration: 15,
     category: 'general',
     tiltThreshold: 25,
     soundEnabled: true,
