@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { formatTime, playSound, triggerVibration, triggerFlash } from '../../lib/utils';
 import { useSettings } from '../SettingsContext';
 import { useDeviceTiltControls } from '../../hooks/useDeviceTiltControls';
+import { useSwipeControls } from '../../hooks/useSwipeControls';
 import { getRandomWord, WORD_CATEGORIES } from '../../data/words';
 import { updatePlayerStats, getOrCreatePlayerId } from '../../lib/roomManager';
 import '../../styles/components.css';
@@ -16,8 +17,9 @@ export function GameScreen({ onGameEnd, roomCode }) {
     const [skippedAnswers, setSkippedAnswers] = useState([]);
     const [usedWords, setUsedWords] = useState(new Set());
     const [gameStarted, setGameStarted] = useState(false);
-    const [sensorStatus, setSensorStatus] = useState('Iniciando...');
+    const [sensorStatus, setSensorStatus] = useState('Desliza para jugar');
     const [isMultiplayer] = useState(!!roomCode);
+    const [controlMode, setControlMode] = useState('swipe');
     const handleCorrect = () => {
         if (!gameStarted)
             return;
@@ -42,6 +44,7 @@ export function GameScreen({ onGameEnd, roomCode }) {
         nextWord();
     };
     const { tiltState, calibrate, requestPermissionAndStart } = useDeviceTiltControls(handleSkip, handleCorrect, settings.tiltCalibration, settings.tiltThreshold);
+    useSwipeControls(handleSkip, handleCorrect, 50);
     const nextWord = () => {
         const categoriesToUse = settings.mixCategories
             ? Object.keys(WORD_CATEGORIES)
@@ -92,20 +95,23 @@ export function GameScreen({ onGameEnd, roomCode }) {
     useEffect(() => {
         let timeoutId;
         const startup = async () => {
-            setSensorStatus('Solicitando permiso de sensores...');
+            setSensorStatus('Desliza para jugar');
+            setControlMode('swipe');
+            // Try to detect tilt sensors
             await requestPermissionAndStart();
             // Wait a bit for sensors to be detected
             timeoutId = window.setTimeout(() => {
                 if (tiltState.sensorAvailable) {
-                    setSensorStatus('Calibrando...');
-                    calibrate();
-                    setSensorStatus('✓ Sensores OK - Inclina el dispositivo');
+                    console.log('[GameScreen] Sensores detectados');
+                    setSensorStatus('✓ Inclinación habilitada');
+                    setControlMode('tilt');
                 }
                 else {
-                    console.warn('[GameScreen] Sensores no detectados, usando botones');
-                    setSensorStatus('⚠️ Usando botones (sensores no disponibles)');
+                    console.warn('[GameScreen] Sensores no detectados - usando gestos');
+                    setSensorStatus('👆 Desliza arriba/abajo para jugar');
+                    setControlMode('swipe');
                 }
-            }, 500);
+            }, 800);
         };
         startup();
         return () => {
@@ -161,12 +167,10 @@ export function GameScreen({ onGameEnd, roomCode }) {
         return () => clearInterval(gameInterval);
     }, [gameStarted, correctAnswers, skippedAnswers, score, onGameEnd, isMultiplayer, roomCode]);
     if (!gameStarted) {
-        const isSensorOK = tiltState.sensorAvailable && sensorStatus.includes('OK');
-        const isError = sensorStatus.includes('Usando botones');
-        return (_jsxs("div", { className: "pre-game-screen", children: [_jsx("h1", { children: "\u00A1Listo?" }), _jsx("div", { className: "countdown-display", children: preCountdown > 0 ? preCountdown : '¡YA!' }), _jsxs("p", { className: `sensor-status-text ${isError ? 'warning' : ''}`, children: [isSensorOK ? '✓' : isError ? '⚠️' : '⏳', " ", sensorStatus] }), !tiltState.sensorAvailable && (_jsx("p", { className: "fallback-info", children: "\uD83D\uDCF1 Usa los botones para jugar" })), tiltState.sensorAvailable && (_jsx("p", { className: "fallback-info", children: "\uD83C\uDFAE Inclina el dispositivo para controlar" }))] }));
+        return (_jsxs("div", { className: "pre-game-screen", children: [_jsx("h1", { children: "\u00A1Listo?" }), _jsx("div", { className: "countdown-display", children: preCountdown > 0 ? preCountdown : '¡YA!' }), _jsxs("p", { className: "sensor-status-text", children: [controlMode === 'tilt' ? '🎮' : '👆', " ", sensorStatus] }), controlMode === 'swipe' && (_jsxs("p", { className: "fallback-info", children: ["\uD83D\uDC46 Desliza arriba para SKIP", _jsx("br", {}), "\uD83D\uDC47 Desliza abajo para CORRECTO"] })), controlMode === 'tilt' && (_jsxs("p", { className: "fallback-info", children: ["\uD83C\uDFAE Inclina para controlar", _jsx("br", {}), "Adelante=SKIP | Atr\u00E1s=CORRECTO"] }))] }));
     }
     return (_jsxs("div", { className: "game-screen", children: [_jsxs("div", { className: "game-header", children: [_jsx("div", { className: "timer", children: formatTime(timeLeft) }), _jsxs("div", { className: "score", children: ["Puntos: ", score] })] }), _jsx("div", { className: "game-center", children: _jsx("div", { className: "word-display", children: currentWord.toUpperCase() }) }), _jsxs("div", { className: "game-footer", children: [tiltState.sensorAvailable && (_jsxs("div", { className: "tilt-indicator", children: [_jsxs("div", { className: "tilt-zones", children: [_jsx("div", { className: "zone-label", children: "\u2B06\uFE0F SKIP" }), _jsxs("div", { className: "tilt-bar-advanced", children: [_jsx("div", { className: "neutral-zone" }), _jsx("div", { className: `tilt-needle advanced ${tiltState.beta < -20 ? 'active-up' : tiltState.beta > 20 ? 'active-down' : ''}`, style: {
                                                     transform: `translateX(${Math.max(-100, Math.min(100, tiltState.beta))}px)`,
                                                     transition: 'none'
-                                                } })] }), _jsx("div", { className: "zone-label", children: "\u2B07\uFE0F CORRECT" })] }), _jsxs("div", { className: "tilt-value", children: ["Beta: ", Math.round(tiltState.beta), "\u00B0", tiltState.beta < -20 && ' 🔼 SKIP!', tiltState.beta > 20 && ' 🔽 CORRECT!'] })] })), !tiltState.sensorAvailable && (_jsxs("div", { className: "button-controls", children: [_jsx("button", { onClick: handleSkip, className: "btn btn-skip", children: "\u2B06\uFE0F SKIP" }), _jsx("button", { onClick: handleCorrect, className: "btn btn-correct", children: "\u2B07\uFE0F CORRECTA" })] })), _jsxs("div", { className: "stats", children: [_jsxs("div", { children: ["\u2713 ", correctAnswers.length] }), _jsxs("div", { children: ["\u2298 ", skippedAnswers.length] })] })] }), _jsx("div", { id: "flash-overlay", className: "flash-overlay" })] }));
+                                                } })] }), _jsx("div", { className: "zone-label", children: "\u2B07\uFE0F CORRECT" })] }), _jsxs("div", { className: "tilt-value", children: ["Beta: ", Math.round(tiltState.beta), "\u00B0", tiltState.beta < -20 && ' 🔼 SKIP!', tiltState.beta > 20 && ' 🔽 CORRECT!'] })] })), (controlMode === 'swipe' || !tiltState.sensorAvailable) && (_jsxs("div", { className: "button-controls", children: [_jsx("button", { onClick: handleSkip, className: "btn btn-skip", children: "\u2B06\uFE0F SKIP" }), _jsx("button", { onClick: handleCorrect, className: "btn btn-correct", children: "\u2B07\uFE0F CORRECTA" })] })), _jsxs("div", { className: "stats", children: [_jsxs("div", { children: ["\u2713 ", correctAnswers.length] }), _jsxs("div", { children: ["\u2298 ", skippedAnswers.length] })] })] }), _jsx("div", { id: "flash-overlay", className: "flash-overlay" })] }));
 }

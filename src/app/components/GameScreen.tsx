@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { formatTime, playSound, triggerVibration, triggerFlash } from '../../lib/utils'
 import { useSettings } from '../SettingsContext'
 import { useDeviceTiltControls } from '../../hooks/useDeviceTiltControls'
+import { useSwipeControls } from '../../hooks/useSwipeControls'
 import { getRandomWord, WORD_CATEGORIES } from '../../data/words'
 import { updatePlayerStats, getOrCreatePlayerId } from '../../lib/roomManager'
 import '../../styles/components.css'
@@ -21,8 +22,9 @@ export function GameScreen({ onGameEnd, roomCode }: GameScreenProps) {
   const [skippedAnswers, setSkippedAnswers] = useState<string[]>([])
   const [usedWords, setUsedWords] = useState<Set<string>>(new Set())
   const [gameStarted, setGameStarted] = useState(false)
-  const [sensorStatus, setSensorStatus] = useState('Iniciando...')
+  const [sensorStatus, setSensorStatus] = useState('Desliza para jugar')
   const [isMultiplayer] = useState(!!roomCode)
+  const [controlMode, setControlMode] = useState<'tilt' | 'swipe' | 'buttons'>('swipe')
 
   const handleCorrect = () => {
     if (!gameStarted) return
@@ -54,6 +56,12 @@ export function GameScreen({ onGameEnd, roomCode }: GameScreenProps) {
     handleCorrect,
     settings.tiltCalibration,
     settings.tiltThreshold
+  )
+
+  useSwipeControls(
+    handleSkip,
+    handleCorrect,
+    50
   )
 
   const nextWord = () => {
@@ -113,20 +121,24 @@ export function GameScreen({ onGameEnd, roomCode }: GameScreenProps) {
     let timeoutId: number
     
     const startup = async () => {
-      setSensorStatus('Solicitando permiso de sensores...')
+      setSensorStatus('Desliza para jugar')
+      setControlMode('swipe')
+      
+      // Try to detect tilt sensors
       await requestPermissionAndStart()
 
       // Wait a bit for sensors to be detected
       timeoutId = window.setTimeout(() => {
         if (tiltState.sensorAvailable) {
-          setSensorStatus('Calibrando...')
-          calibrate()
-          setSensorStatus('✓ Sensores OK - Inclina el dispositivo')
+          console.log('[GameScreen] Sensores detectados')
+          setSensorStatus('✓ Inclinación habilitada')
+          setControlMode('tilt')
         } else {
-          console.warn('[GameScreen] Sensores no detectados, usando botones')
-          setSensorStatus('⚠️ Usando botones (sensores no disponibles)')
+          console.warn('[GameScreen] Sensores no detectados - usando gestos')
+          setSensorStatus('👆 Desliza arriba/abajo para jugar')
+          setControlMode('swipe')
         }
-      }, 500)
+      }, 800)
     }
 
     startup()
@@ -189,21 +201,18 @@ export function GameScreen({ onGameEnd, roomCode }: GameScreenProps) {
   }, [gameStarted, correctAnswers, skippedAnswers, score, onGameEnd, isMultiplayer, roomCode])
 
   if (!gameStarted) {
-    const isSensorOK = tiltState.sensorAvailable && sensorStatus.includes('OK')
-    const isError = sensorStatus.includes('Usando botones')
-    
     return (
       <div className="pre-game-screen">
         <h1>¡Listo?</h1>
         <div className="countdown-display">{preCountdown > 0 ? preCountdown : '¡YA!'}</div>
-        <p className={`sensor-status-text ${isError ? 'warning' : ''}`}>
-          {isSensorOK ? '✓' : isError ? '⚠️' : '⏳'} {sensorStatus}
+        <p className="sensor-status-text">
+          {controlMode === 'tilt' ? '🎮' : '👆'} {sensorStatus}
         </p>
-        {!tiltState.sensorAvailable && (
-          <p className="fallback-info">📱 Usa los botones para jugar</p>
+        {controlMode === 'swipe' && (
+          <p className="fallback-info">👆 Desliza arriba para SKIP<br/>👇 Desliza abajo para CORRECTO</p>
         )}
-        {tiltState.sensorAvailable && (
-          <p className="fallback-info">🎮 Inclina el dispositivo para controlar</p>
+        {controlMode === 'tilt' && (
+          <p className="fallback-info">🎮 Inclina para controlar<br/>Adelante=SKIP | Atrás=CORRECTO</p>
         )}
       </div>
     )
@@ -248,7 +257,7 @@ export function GameScreen({ onGameEnd, roomCode }: GameScreenProps) {
           </div>
         )}
 
-        {!tiltState.sensorAvailable && (
+        {(controlMode === 'swipe' || !tiltState.sensorAvailable) && (
           <div className="button-controls">
             <button onClick={handleSkip} className="btn btn-skip">
               ⬆️ SKIP
