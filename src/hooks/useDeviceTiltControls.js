@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-export function useDeviceTiltControls(onTiltUp, onTiltDown, calibration, threshold = 25) {
+export function useDeviceTiltControls(onTiltUp, onTiltDown, calibration, threshold = 20 // Reduced threshold for more sensitivity
+) {
     const [tiltState, setTiltState] = useState({
         beta: 0,
         gamma: 0,
@@ -10,12 +11,14 @@ export function useDeviceTiltControls(onTiltUp, onTiltDown, calibration, thresho
     const lastActionRef = useRef(null);
     const calibrationRef = useRef(calibration || { baseBeta: 0, baseGamma: 0 });
     const throttleRef = useRef(null);
+    const lastDirectionRef = useRef(null);
+    const neutralZoneRef = useRef(false); // Track if we're back in neutral zone
     const handleDeviceOrientation = useCallback((event) => {
-        if (!event.alpha || !event.beta || !event.gamma)
+        if (event.alpha === null || event.beta === null || event.gamma === null)
             return;
-        const beta = event.beta || 0;
-        const gamma = event.gamma || 0;
-        const alpha = event.alpha || 0;
+        const beta = event.beta;
+        const gamma = event.gamma;
+        const alpha = event.alpha;
         setTiltState(prev => ({
             ...prev,
             beta,
@@ -27,31 +30,47 @@ export function useDeviceTiltControls(onTiltUp, onTiltDown, calibration, thresho
         if (throttleRef.current)
             return;
         const baseBeta = calibrationRef.current.baseBeta;
-        // Calculate delta from calibration point
         const betaDelta = beta - baseBeta;
-        // Use beta (front-back tilt) primarily
-        const tiltAmount = betaDelta;
         const now = Date.now();
-        const minInterval = 600; // Reduced from 900ms for faster response
-        // Forward tilt (arriba/up) = negative beta delta
-        if (tiltAmount < -threshold) {
-            if (!lastActionRef.current || now - lastActionRef.current.timestamp >= minInterval) {
-                lastActionRef.current = { type: 'tilt-up', timestamp: now };
-                onTiltUp();
-                throttleRef.current = setTimeout(() => {
-                    throttleRef.current = null;
-                }, 200);
+        const minInterval = 400; // Faster cooldown for more responsive feel
+        // Define zones with hysteresis to avoid flickering
+        const upperThreshold = -threshold; // Forward tilt
+        const lowerThreshold = threshold; // Backward tilt
+        // Forward tilt (SKIP) = device tilted forward/up
+        if (betaDelta < upperThreshold) {
+            // Hysteresis: only trigger if we were neutral or in opposite direction
+            if (lastDirectionRef.current !== 'up' || neutralZoneRef.current) {
+                if (!lastActionRef.current || now - lastActionRef.current.timestamp >= minInterval) {
+                    lastActionRef.current = { type: 'tilt-up', timestamp: now };
+                    lastDirectionRef.current = 'up';
+                    neutralZoneRef.current = false;
+                    onTiltUp();
+                    // Debounce further tilt events
+                    throttleRef.current = setTimeout(() => {
+                        throttleRef.current = null;
+                    }, 150);
+                }
             }
         }
-        // Backward tilt (abajo/down) = positive beta delta
-        else if (tiltAmount > threshold) {
-            if (!lastActionRef.current || now - lastActionRef.current.timestamp >= minInterval) {
-                lastActionRef.current = { type: 'tilt-down', timestamp: now };
-                onTiltDown();
-                throttleRef.current = setTimeout(() => {
-                    throttleRef.current = null;
-                }, 200);
+        // Backward tilt (CORRECT) = device tilted backward/down
+        else if (betaDelta > lowerThreshold) {
+            // Hysteresis: only trigger if we were neutral or in opposite direction
+            if (lastDirectionRef.current !== 'down' || neutralZoneRef.current) {
+                if (!lastActionRef.current || now - lastActionRef.current.timestamp >= minInterval) {
+                    lastActionRef.current = { type: 'tilt-down', timestamp: now };
+                    lastDirectionRef.current = 'down';
+                    neutralZoneRef.current = false;
+                    onTiltDown();
+                    // Debounce further tilt events
+                    throttleRef.current = setTimeout(() => {
+                        throttleRef.current = null;
+                    }, 150);
+                }
             }
+        }
+        // Neutral zone (between thresholds)
+        else {
+            neutralZoneRef.current = true;
         }
     }, [onTiltUp, onTiltDown, threshold]);
     const requestPermissionAndStart = useCallback(async () => {

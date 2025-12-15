@@ -205,17 +205,32 @@ export function GameScreen({ onGameEnd, roomCode }: GameScreenProps) {
       </div>
 
       <div className="game-footer">
-        <div className="tilt-indicator">
-          <div className="tilt-label">Inclinación Beta: {Math.round(tiltState.beta)}°</div>
-          <div className="tilt-bar">
-            <div
-              className="tilt-needle"
-              style={{
-                left: `${Math.max(0, Math.min(100, 50 + (tiltState.beta / 180) * 50))}%`
-              }}
-            />
+        {tiltState.sensorAvailable && (
+          <div className="tilt-indicator">
+            <div className="tilt-zones">
+              <div className="zone-label">⬆️ SKIP</div>
+              <div className="tilt-bar-advanced">
+                {/* Center neutral zone */}
+                <div className="neutral-zone" />
+                
+                {/* Dynamic tilt indicator */}
+                <div
+                  className={`tilt-needle advanced ${tiltState.beta < -20 ? 'active-up' : tiltState.beta > 20 ? 'active-down' : ''}`}
+                  style={{
+                    transform: `translateX(${Math.max(-100, Math.min(100, tiltState.beta))}px)`,
+                    transition: 'none'
+                  }}
+                />
+              </div>
+              <div className="zone-label">⬇️ CORRECT</div>
+            </div>
+            <div className="tilt-value">
+              Beta: {Math.round(tiltState.beta)}° 
+              {tiltState.beta < -20 && ' 🔼 SKIP!'}
+              {tiltState.beta > 20 && ' 🔽 CORRECT!'}
+            </div>
           </div>
-        </div>
+        )}
 
         {!tiltState.sensorAvailable && (
           <div className="button-controls">
